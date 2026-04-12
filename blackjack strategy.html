@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Blackjack Trainer</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 40px; }
+    .cards { font-size: 26px; margin: 15px; }
+    button { padding: 10px 20px; margin: 8px; font-size: 16px; }
+    #message { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h1>Blackjack Strategy Trainer</h1>
+
+<div class="cards">Dealer: <span id="dealer"></span></div>
+<div class="cards">You: <span id="player"></span></div>
+
+<div>
+  <button onclick="check('H')">Hit</button>
+  <button onclick="check('S')">Stay</button>
+  <button id="doubleBtn" onclick="check('D')">Double</button>
+  <button id="splitBtn" onclick="check('P')" style="display:none;">Split</button>
+</div>
+
+<div id="message"></div>
+
+<script>
+const cards = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+
+let dealer, player, correctMove;
+
+function draw() {
+  return cards[Math.floor(Math.random() * cards.length)];
+}
+
+function val(card) {
+  if (["J","Q","K"].includes(card)) return 10;
+  if (card === "A") return 11;
+  return parseInt(card);
+}
+
+function dealerVal(card) {
+  return card === "A" ? 11 : val(card);
+}
+
+function isPair() {
+  return player[0] === player[1];
+}
+
+function isSoft() {
+  return player.includes("A");
+}
+
+const dealerCols = [2,3,4,5,6,7,8,9,10,11];
+
+// ================= FULL STRATEGY =================
+
+const strategy = {
+  hard: {
+    5:  {2:"H",3:"H",4:"H",5:"H",6:"H",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    6:  {2:"H",3:"H",4:"H",5:"H",6:"H",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    7:  {2:"H",3:"H",4:"H",5:"H",6:"H",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    8:  {2:"H",3:"H",4:"H",5:"H",6:"H",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    9:  {2:"H",3:"D",4:"D",5:"D",6:"D",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    10: {2:"D",3:"D",4:"D",5:"D",6:"D",7:"D",8:"D",9:"D",10:"H",11:"H"},
+    11: {2:"D",3:"D",4:"D",5:"D",6:"D",7:"D",8:"D",9:"D",10:"D",11:"D"},
+    12: {2:"H",3:"H",4:"S",5:"S",6:"S",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    13: {2:"S",3:"S",4:"S",5:"S",6:"S",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    14: {2:"S",3:"S",4:"S",5:"S",6:"S",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    15: {2:"S",3:"S",4:"S",5:"S",6:"S",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    16: {2:"S",3:"S",4:"S",5:"S",6:"S",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    17: {2:"S",3:"S",4:"S",5:"S",6:"S",7:"S",8:"S",9:"S",10:"S",11:"S"},
+    18: {2:"S",3:"S",4:"S",5:"S",6:"S",7:"S",8:"S",9:"S",10:"S",11:"S"},
+    19: {2:"S",3:"S",4:"S",5:"S",6:"S",7:"S",8:"S",9:"S",10:"S",11:"S"},
+    20: {2:"S",3:"S",4:"S",5:"S",6:"S",7:"S",8:"S",9:"S",10:"S",11:"S"},
+    21: {2:"S",3:"S",4:"S",5:"S",6:"S",7:"S",8:"S",9:"S",10:"S",11:"S"}
+  },
+
+  soft: {
+    "A,2": {2:"H",3:"H",4:"H",5:"D",6:"D",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    "A,3": {2:"H",3:"H",4:"H",5:"D",6:"D",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    "A,4": {2:"H",3:"H",4:"D",5:"D",6:"D",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    "A,5": {2:"H",3:"H",4:"D",5:"D",6:"D",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    "A,6": {2:"H",3:"D",4:"D",5:"D",6:"D",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    "A,7": {2:"Ds",3:"Ds",4:"Ds",5:"Ds",6:"Ds",7:"S",8:"S",9:"H",10:"H",11:"H"},
+    "A,8": {2:"S",3:"S",4:"S",5:"S",6:"Ds",7:"S",8:"S",9:"S",10:"S",11:"S"},
+    "A,9": {2:"S",3:"S",4:"S",5:"S",6:"S",7:"S",8:"S",9:"S",10:"S",11:"S"}
+  },
+
+  pairs: {
+    "2,2": {2:"P",3:"P",4:"P",5:"P",6:"P",7:"P",8:"H",9:"H",10:"H",11:"H"},
+    "3,3": {2:"P",3:"P",4:"P",5:"P",6:"P",7:"P",8:"H",9:"H",10:"H",11:"H"},
+    "4,4": {2:"H",3:"H",4:"H",5:"P",6:"P",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    "5,5": {2:"H",3:"H",4:"H",5:"H",6:"H",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    "6,6": {2:"P",3:"P",4:"P",5:"P",6:"P",7:"H",8:"H",9:"H",10:"H",11:"H"},
+    "7,7": {2:"P",3:"P",4:"P",5:"P",6:"P",7:"P",8:"H",9:"H",10:"H",11:"H"},
+    "8,8": {2:"P",3:"P",4:"P",5:"P",6:"P",7:"P",8:"P",9:"P",10:"P",11:"P"},
+    "9,9": {2:"P",3:"P",4:"P",5:"P",6:"P",7:"S",8:"P",9:"P",10:"S",11:"S"},
+    "10,10": {2:"S",3:"S",4:"S",5:"S",6:"S",7:"S",8:"S",9:"S",10:"S",11:"S"},
+    "A,A": {2:"P",3:"P",4:"P",5:"P",6:"P",7:"P",8:"P",9:"P",10:"P",11:"P"}
+  }
+};
+
+// =================================================
+
+function start() {
+  dealer = draw();
+  player = [draw(), draw()];
+
+  document.getElementById("dealer").innerText = dealer;
+  document.getElementById("player").innerText = player.join(", ");
+  document.getElementById("message").innerText = "";
+
+  document.getElementById("splitBtn").style.display = isPair() ? "inline-block" : "none";
+
+  decideMove();
+}
+
+function decideMove() {
+  let d = dealerVal(dealer);
+  let move;
+
+  if (isPair()) {
+    let key = player[0] + "," + player[1];
+    if (strategy.pairs[key]) move = strategy.pairs[key][d];
+  }
+
+  if (!move && isSoft()) {
+    let sorted = player.slice().sort((a,b)=>val(b)-val(a));
+    let key = sorted.join(",");
+    if (strategy.soft[key]) move = strategy.soft[key][d];
+  }
+
+  if (!move) {
+    let total = val(player[0]) + val(player[1]);
+    move = strategy.hard[total][d];
+  }
+
+  correctMove = move;
+}
+
+function check(choice) {
+  let valid = false;
+
+  if (choice === correctMove) valid = true;
+
+  if (correctMove === "Ds" && (choice === "D" || choice === "S")) valid = true;
+  if (correctMove === "D" && choice === "H") valid = true;
+
+  if (valid) {
+    document.getElementById("message").innerText = "✅ Correct!";
+    setTimeout(start, 700);
+  } else {
+    document.getElementById("message").innerText = "❌ Try again";
+  }
+}
+
+start();
+</script>
+
+</body>
+</html>
